@@ -3,13 +3,13 @@
   "manifest_version": 2,
   "version": "0.1",
   "permissions": [
-  	"https://images.google.com/*",
-  	"https://www.google.com/*"
+    "https://images.google.com/*",
+    "https://www.google.com/*"
   ],
   "content_scripts": [
-  	{
-  		"matches": ["https://*.craigslist.org/*"],
-  		"js": ["imagechecker.js"]
-  	}
+    {
+      "matches": ["https://*.craigslist.org/*"],
+      "js": ["imagechecker.js"]
+    }
   ]
 }

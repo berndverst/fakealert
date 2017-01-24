@@ -1,57 +1,83 @@
-function hasSearchResult(xhr) {
-    var data;
-    if (!xhr.responseType || xhr.responseType === "text") {
-        data = xhr.responseText;
-    } else if (xhr.responseType === "document") {
-        data = xhr.responseXML;
-    } else {
-        data = xhr.response;
-    }
+// Use this map to track images we have already analyzed
+var imgMap = new Map();
 
-    // TODO: parse Google Search result page here and analyze results
-    //
-    // doc = document.implementation.createHTMLDocument("imagessearch");
-    // doc.documentElement.innerHTML = data;
+function hasSearchResult(xhr, imagesrc) {
+  var data;
+  if (!xhr.responseType || xhr.responseType === "text") {
+    data = xhr.responseText;
+  } else if (xhr.responseType === "document") {
+    data = xhr.responseXML;
+  } else {
+    data = xhr.response;
+  }
 
-    if (data.includes("Pages that include matching images")) {
-        return true
-    }
-    else {
-        return false;
-    }
+  // TODO: parse Google Search result page here and analyze results
+  //
+  // doc = document.implementation.createHTMLDocument("imagessearch");
+  // doc.documentElement.innerHTML = data;
+
+  if (data.includes("Pages that include matching images")) {
+    imgMap.set(imagesrc, true);
+    return true
+  }
+  else {
+    imgMap.set(imagesrc, false);
+    return false;
+  }
 }
 
+function checkImagesInElement(element) {
 
-// Find all images (larger than 100x100 to avoid icons)
-        
-var images = document.getElementsByTagName('img'); 
-imgList = [];
-for(var i = 0; i < images.length; i++) {
-    if ((images[i].height > 99) && (images[i].width > 99)
-            && images[i].src.startsWith('https://images.')) {
+  var images = element.getElementsByTagName('img');
 
-        url = ('https://images.google.com/searchbyimage?image_url=' +
-              encodeURIComponent(images[i].src));
+  imgList = [];
+  for(var i = 0; i < images.length; i++) {
+    // Find all images (larger than 100x100 to avoid icons)
+    if ((images[i].height > 99) && (images[i].width > 99)) {
 
-        xhr = new XMLHttpRequest();
-        xhr.onreadystatechange = function(image, searchurl) {
+      // we already searched for this image before
+      if (imgMap.has(images[i].src)) {
+        continue
+      }
 
-            return function() {   
-                if (xhr.readyState == 4) {
-                    found = hasSearchResult(xhr)
+      url = ('https://images.google.com/searchbyimage?image_url=' +
+            encodeURIComponent(images[i].src));
 
-                    if (found) {
-                        image.width = image.width - 20;
-                        image.height = image.height - 20;
-                        image.style.border = '10px solid red';
-                        image.onclick = function() {
-                            window.open(searchurl, '_blank')};
-                    }
-                }
+      asyncRequest = new XMLHttpRequest();
+      asyncRequest.onreadystatechange = function(image, searchurl, xhr) {
+
+        return function() {   
+            if (xhr.readyState == 4) {
+              found = hasSearchResult(xhr, image.src)
+
+              if (found) {
+                image.width = image.width - 20;
+                image.height = image.height - 20;
+                image.style.border = '10px solid red';
+                image.onclick = function() {
+                  window.open(searchurl, '_blank')};
+              }
             }
-        } (images[i], url);
+        }
+      } (images[i], url, asyncRequest);
 
-        xhr.open('GET', url, true);
-        xhr.send(null);                
+      asyncRequest.open('GET', url, true);
+      asyncRequest.send(null);                
     }
+  }
 }
+
+gallery = document.getElementsByClassName("gallery")[0];
+checkImagesInElement(gallery);
+
+MutationObserver = window.MutationObserver;
+
+var observer = new MutationObserver(function(mutations, observer){
+  checkImagesInElement(gallery);
+});
+
+observer.observe(gallery, {
+  subtree: true,
+  attributes: false,
+  childList: true
+});
