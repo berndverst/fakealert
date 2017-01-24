@@ -1,22 +1,48 @@
 // Use this map to track images we have already analyzed
 var imgMap = new Map();
 
+// This is where Craigslist shows the big images
+gallery = document.getElementsByClassName('gallery')[0];
+
+// This is where we display image warnings messages
+var warningLabel = document.createElement('div');
+warningLabel.style.visibility = 'hidden';
+warningLabel.style.width = '100%';
+warningLabel.style.backgroundColor = 'red';
+warningLabel.style.padding = '5px';
+warningLabel.appendChild(document.createTextNode('Image found via '));
+
+// Include direct link to Google Image Search
+var currentSearchLink = document.createElement('a');
+currentSearchLink.appendChild(document.createTextNode('Google Image Search'));
+currentSearchLink.title = 'Google Image Search';
+currentSearchLink.href = 'https://images.google.com';
+currentSearchLink.target = '_blank';
+
+// Display some of the websites where the image was found
+var searchResults = document.createElement('ul')
+
+warningLabel.appendChild(currentSearchLink);
+warningLabel.appendChild(document.createElement('br'));
+warningLabel.appendChild(searchResults);
+
+gallery.appendChild(warningLabel);
+
+
 function hasSearchResult(xhr, imagesrc) {
   var data;
-  if (!xhr.responseType || xhr.responseType === "text") {
+  if (!xhr.responseType || xhr.responseType === 'text') {
     data = xhr.responseText;
-  } else if (xhr.responseType === "document") {
+  } else if (xhr.responseType === 'document') {
     data = xhr.responseXML;
   } else {
     data = xhr.response;
   }
 
-  // TODO: parse Google Search result page here and analyze results
-  //
-  // doc = document.implementation.createHTMLDocument("imagessearch");
-  // doc.documentElement.innerHTML = data;
+  // TODO: parse Google Search result page here and display results
+  //       Do this by inserting <li> elements into searchResults
 
-  if (data.includes("Pages that include matching images")) {
+  if (data.includes('Pages that include matching images')) {
     imgMap.set(imagesrc, true);
     return true
   }
@@ -26,54 +52,68 @@ function hasSearchResult(xhr, imagesrc) {
   }
 }
 
-function checkImagesInElement(element) {
+function checkVisibleImage() {
 
-  var images = element.getElementsByTagName('img');
+  var imageToCheck = null;
 
-  imgList = [];
+  // find visible image
+  var images = gallery.getElementsByClassName('slide');
+
   for(var i = 0; i < images.length; i++) {
-    // Find all images (larger than 100x100 to avoid icons)
-    if ((images[i].height > 99) && (images[i].width > 99)) {
 
-      // we already searched for this image before
-      if (imgMap.has(images[i].src)) {
-        continue
-      }
-
-      url = ('https://images.google.com/searchbyimage?image_url=' +
-            encodeURIComponent(images[i].src));
-
-      asyncRequest = new XMLHttpRequest();
-      asyncRequest.onreadystatechange = function(image, searchurl, xhr) {
-
-        return function() {   
-            if (xhr.readyState == 4) {
-              found = hasSearchResult(xhr, image.src)
-
-              if (found) {
-                image.width = image.width - 20;
-                image.height = image.height - 20;
-                image.style.border = '10px solid red';
-                image.onclick = function() {
-                  window.open(searchurl, '_blank')};
-              }
-            }
-        }
-      } (images[i], url, asyncRequest);
-
-      asyncRequest.open('GET', url, true);
-      asyncRequest.send(null);                
+    if (images[i].style.transform == 'translate(0px, 0px)') {
+      imageToCheck = images[i].getElementsByTagName('img')[0];
+      break;
     }
   }
+
+  url = ('https://images.google.com/searchbyimage?image_url=' +
+        encodeURIComponent(imageToCheck.src));
+
+  // we already searched for this image before
+  if (imgMap.has(imageToCheck.src)) {
+    if (imgMap[imageToCheck.src]) {
+      currentSearchLink.href = url;
+      warningLabel.style.visibility = 'visible';
+    } else {
+      warningLabel.style.visibility = 'hidden';
+    }
+    return
+  }
+
+
+
+  asyncRequest = new XMLHttpRequest();
+  asyncRequest.onreadystatechange = function(image, searchurl, xhr) {
+
+    return function() {   
+        if (xhr.readyState == 4) {
+          found = hasSearchResult(xhr, image.src)
+
+          if (found) {
+            currentSearchLink.href = searchurl;
+            image.width = image.width - 20;
+            image.height = image.height - 20;
+            image.style.border = '10px solid red';
+            warningLabel.style.visibility = 'visible';
+          } else {
+            warningLabel.style.visibility = 'hidden';
+          }
+        }
+    }
+  } (imageToCheck, url, asyncRequest);
+
+  asyncRequest.open('GET', url, true);
+  asyncRequest.send(null);                
 }
 
-gallery = document.getElementsByClassName("gallery")[0];
-checkImagesInElement(gallery);
+
+checkVisibleImage(gallery);
 
 MutationObserver = window.MutationObserver;
 
 var observer = new MutationObserver(function(mutations, observer){
-  checkImagesInElement(gallery);
+  checkVisibleImage();
 });
 
 observer.observe(gallery, {
