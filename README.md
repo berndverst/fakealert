@@ -1,4 +1,4 @@
-# Fake Image Alert for Craigslist.
+# Fake Image Alert for Craigslist
 
 Fake Image Alert for Craigslist is a Chrome extension that will indicate whether a given image can be found elsewhere on the internet. If so, you can with one click open the Google Image Search to discover where the image is being used.
 
